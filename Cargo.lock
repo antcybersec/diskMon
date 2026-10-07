@@ -2708,7 +2708,7 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "resource-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "resource-core",
  "resource-platform",
@@ -2717,7 +2717,7 @@ dependencies = [
 
 [[package]]
 name = "resource-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
  "dirs",
@@ -2728,7 +2728,7 @@ dependencies = [
 
 [[package]]
 name = "resource-platform"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "libc",
@@ -2740,7 +2740,7 @@ dependencies = [
 
 [[package]]
 name = "resource-ui"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "dirs",
  "eframe",

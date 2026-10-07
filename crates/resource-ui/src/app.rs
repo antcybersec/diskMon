@@ -186,6 +186,7 @@ impl eframe::App for DiskMonApp {
                 };
                 let flagged: HashSet<String> =
                     t.alerts.iter().filter_map(|a| a.target_workload_id.clone()).collect();
+                let area = ui.max_rect();
                 let output = treemap::show(
                     ui,
                     &treemap::Input {
@@ -200,6 +201,9 @@ impl eframe::App for DiskMonApp {
                         selection: &self.selection,
                     },
                 );
+                if self.paused.load(Ordering::Relaxed) {
+                    ui.painter().rect_stroke(area.expand(3.0), CornerRadius::same(5), Stroke::new(2.0, theme::AMBER), egui::StrokeKind::Inside);
+                }
                 if let Some(id) = output.zoom_into {
                     self.focus = Some(id.clone());
                     self.selection = Selection::Workload(id);
@@ -231,6 +235,18 @@ impl DiskMonApp {
                 ui.label(RichText::new("/").color(MUTED));
                 ui.label(RichText::new(&w.name).strong());
             }
+            if self.paused.load(Ordering::Relaxed) {
+                ui.add_space(10.0);
+                let age = t.updated_at.map(|at| at.elapsed().as_secs()).unwrap_or(0);
+                egui::Frame::new()
+                    .fill(theme::AMBER.gamma_multiply(0.18))
+                    .stroke(Stroke::new(1.0, theme::AMBER))
+                    .corner_radius(10)
+                    .inner_margin(egui::Margin::symmetric(8, 2))
+                    .show(ui, |ui| {
+                        ui.label(RichText::new(format!("PAUSED · frozen {age}s ago")).color(theme::AMBER).small().strong());
+                    });
+            }
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let export = ui.add_enabled(
@@ -242,7 +258,13 @@ impl DiskMonApp {
                 }
 
                 let paused = self.paused.load(Ordering::Relaxed);
-                if ui.button(if paused { "Resume" } else { "Pause" }).on_hover_text("Pause live updates (P)").clicked() {
+                let pause_button = if paused {
+                    egui::Button::new(RichText::new("Resume").color(BG).strong()).fill(theme::AMBER).corner_radius(6)
+                } else {
+                    egui::Button::new("Pause").corner_radius(6)
+                };
+                let hint = if paused { "Resume live updates (P)" } else { "Freeze the view on the current snapshot (P)" };
+                if ui.add(pause_button).on_hover_text(hint).clicked() {
                     self.toggle_pause();
                 }
 
@@ -524,7 +546,10 @@ fn footer(ui: &mut egui::Ui, t: &Telemetry, paused: bool) {
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let text = match (&t.snapshot, paused) {
-                (_, true) => "paused".to_string(),
+                (_, true) => format!(
+                    "paused · showing the snapshot from {}s ago · press P to resume",
+                    t.updated_at.map(|at| at.elapsed().as_secs()).unwrap_or(0)
+                ),
                 (Some(s), false) => format!(
                     "sampled {} processes · {} ms · updated {}s ago",
                     s.processes.len(),
@@ -533,7 +558,7 @@ fn footer(ui: &mut egui::Ui, t: &Telemetry, paused: bool) {
                 ),
                 (None, false) => "starting…".to_string(),
             };
-            ui.label(RichText::new(text).color(MUTED).small());
+            ui.label(RichText::new(text).color(if paused { theme::AMBER } else { MUTED }).small());
         });
     });
 }
