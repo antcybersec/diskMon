@@ -1,0 +1,10 @@
+[package]
+name = "resource-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+resource-core = { path = "../resource-core" }
+resource-platform = { path = "../resource-platform" }
+tokio = { version = "1.0", features = ["full"] }

@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/resource-core",
+    "crates/resource-platform",
+    "crates/resource-cli",
+    "crates/resource-ui",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Visual System Resource Diagnosis Tool Contributors"]
+license = "MIT"
