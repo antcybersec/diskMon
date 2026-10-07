@@ -20,7 +20,7 @@ The apps are not code-signed yet, so your system asks you to confirm the first l
 
 - **Groups processes into apps.** Helpers are folded into the app bundle they belong to, and about 30 well-known workloads are recognised: browsers, IDEs, language servers, Docker, Ollama, databases, build tools and system processes.
 - **Nested treemap.** Each app is a tile with its processes inside. Size it by memory, CPU or disk I/O, zoom into any app, and filter by name.
-- **Alerts.** An app using 25% or more of your RAM (critical at 40%), memory growth of more than 100 MB, sustained CPU at a full core or more for about 30 seconds, more than 30 new processes in about 20 seconds, and memory pressure of 75% or more.
+- **Alerts.** An app using 25% or more of your RAM (critical at 40%), memory growth of more than 100 MB, sustained CPU at a full core or more for about 30 seconds, 30 or more new processes in about 20 seconds, and memory pressure of 75% or more.
 - **Worth a look.** A short list of the apps most worth checking right now, with the reason.
 - **Memory meter.** On macOS: wired, active, compressed and cached memory, swap and memory pressure.
 - **Reports.** Export a Markdown incident report to your Downloads folder, with your home folder path redacted.
