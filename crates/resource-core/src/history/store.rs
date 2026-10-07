@@ -50,6 +50,11 @@ impl HistoryStore {
         self.snapshots.back()
     }
 
+    /// Snapshots from oldest to newest.
+    pub fn snapshots(&self) -> impl DoubleEndedIterator<Item = &SystemSnapshot> + ExactSizeIterator {
+        self.snapshots.iter()
+    }
+
     pub fn len(&self) -> usize {
         self.snapshots.len()
     }

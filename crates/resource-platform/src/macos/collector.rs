@@ -10,11 +10,28 @@ use resource_core::{Pid, ProcessInfo, ProcessMetrics, ProcessSnapshot, SystemMet
 use crate::traits::{SystemCollector, TelemetryError};
 use super::ffi::*;
 
-pub struct MacOsCollector;
+pub struct MacOsCollector {
+    /// Mach absolute-time units → nanoseconds (125/3 on Apple Silicon, 1/1 on Intel).
+    timebase: (u64, u64),
+}
+
+impl Default for MacOsCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl MacOsCollector {
     pub fn new() -> Self {
-        Self
+        let mut info = mach2::mach_time::mach_timebase_info { numer: 1, denom: 1 };
+        let ok = unsafe { mach2::mach_time::mach_timebase_info(&mut info) } == 0 && info.denom != 0;
+        let timebase = if ok { (info.numer as u64, info.denom as u64) } else { (1, 1) };
+        Self { timebase }
+    }
+
+    /// CPU times from libproc are in Mach absolute-time units, not nanoseconds.
+    fn ticks_to_ns(&self, ticks: u64) -> u64 {
+        (ticks as u128 * self.timebase.0 as u128 / self.timebase.1 as u128) as u64
     }
 
     fn list_pids(&self) -> Result<Vec<Pid>, TelemetryError> {
@@ -113,16 +130,16 @@ impl MacOsCollector {
         let (phys_footprint, user_time_ns, system_time_ns, disk_read, disk_write) = if rusage_res == 0 {
             (
                 rusage.ri_phys_footprint,
-                rusage.ri_user_time,
-                rusage.ri_system_time,
+                self.ticks_to_ns(rusage.ri_user_time),
+                self.ticks_to_ns(rusage.ri_system_time),
                 rusage.ri_diskio_bytesread,
                 rusage.ri_diskio_byteswritten,
             )
         } else {
             (
                 task_info.pti_resident_size,
-                task_info.pti_total_user,
-                task_info.pti_total_system,
+                self.ticks_to_ns(task_info.pti_total_user),
+                self.ticks_to_ns(task_info.pti_total_system),
                 0,
                 0,
             )
@@ -159,22 +176,41 @@ impl MacOsCollector {
 #[async_trait]
 impl SystemCollector for MacOsCollector {
     async fn collect_system_metrics(&self) -> Result<SystemMetrics, TelemetryError> {
-        let mut sys_metrics = SystemMetrics::default();
-        let mut size = mem::size_of::<u64>();
-        let mut total_mem: u64 = 0;
+        let total_memory: u64 = sysctl_value(c"hw.memsize").unwrap_or(0);
+        let page_size: u64 = sysctl_value::<u64>(c"hw.pagesize").unwrap_or(16384);
 
-        unsafe {
-            libc::sysctlbyname(
-                b"hw.memsize\0".as_ptr() as *const _,
-                &mut total_mem as *mut _ as *mut c_void,
-                &mut size,
-                std::ptr::null_mut(),
-                0,
-            );
+        let mut vm: libc::vm_statistics64 = unsafe { mem::zeroed() };
+        let mut count = libc::HOST_VM_INFO64_COUNT;
+        #[allow(deprecated)]
+        let kr = unsafe {
+            libc::host_statistics64(
+                libc::mach_host_self(),
+                libc::HOST_VM_INFO64,
+                &mut vm as *mut _ as libc::host_info64_t,
+                &mut count,
+            )
+        };
+        if kr != libc::KERN_SUCCESS {
+            return Err(TelemetryError::OsError(format!("host_statistics64 returned {kr}")));
         }
 
-        sys_metrics.total_memory = total_mem;
-        Ok(sys_metrics)
+        let swap: libc::xsw_usage = sysctl_value(c"vm.swapusage").unwrap_or(unsafe { mem::zeroed() });
+        // kern.memorystatus_level is the share of memory still available to the system (0-100).
+        let available_level: u32 = sysctl_value(c"kern.memorystatus_level").unwrap_or(100);
+
+        let pages = |n: u64| n * page_size;
+        Ok(SystemMetrics {
+            total_memory,
+            free_memory: pages(vm.free_count as u64),
+            active_memory: pages(vm.active_count as u64),
+            inactive_memory: pages(vm.inactive_count as u64),
+            wired_memory: pages(vm.wire_count as u64),
+            compressed_memory: pages(vm.compressor_page_count as u64),
+            swap_used: swap.xsu_used,
+            swap_total: swap.xsu_total,
+            memory_pressure_pct: 100.0 - available_level.min(100) as f32,
+            global_cpu_pct: 0.0,
+        })
     }
 
     async fn collect_processes(&self) -> Result<HashMap<Pid, ProcessSnapshot>, TelemetryError> {
@@ -189,4 +225,20 @@ impl SystemCollector for MacOsCollector {
 
         Ok(map)
     }
+}
+
+/// Reads a fixed-size value via `sysctlbyname`, or `None` if the call fails.
+fn sysctl_value<T: Copy>(name: &std::ffi::CStr) -> Option<T> {
+    let mut value: T = unsafe { mem::zeroed() };
+    let mut size = mem::size_of::<T>();
+    let rc = unsafe {
+        libc::sysctlbyname(
+            name.as_ptr(),
+            &mut value as *mut T as *mut c_void,
+            &mut size,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+    (rc == 0 && size == mem::size_of::<T>()).then_some(value)
 }

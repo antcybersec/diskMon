@@ -1,7 +1,58 @@
 use std::collections::HashMap;
 use crate::model::{GroupCategory, Pid, ProcessMetrics, ProcessSnapshot, WorkloadGroup};
 
+/// A known workload: matched when any needle appears in the lowercased process
+/// name or executable path.
+struct KnownWorkload {
+    key: &'static str,
+    name: &'static str,
+    category: GroupCategory,
+    name_needles: &'static [&'static str],
+    path_needles: &'static [&'static str],
+}
+
+/// Checked in order, so more specific entries (Xcode) come before generic ones (code).
+const KNOWN: &[KnownWorkload] = &[
+    KnownWorkload { key: "brave", name: "Brave Browser", category: GroupCategory::Browser, name_needles: &["brave"], path_needles: &["brave"] },
+    KnownWorkload { key: "chrome", name: "Google Chrome", category: GroupCategory::Browser, name_needles: &["chrome"], path_needles: &["chrome"] },
+    KnownWorkload { key: "firefox", name: "Mozilla Firefox", category: GroupCategory::Browser, name_needles: &["firefox"], path_needles: &["firefox"] },
+    KnownWorkload { key: "edge", name: "Microsoft Edge", category: GroupCategory::Browser, name_needles: &["msedge"], path_needles: &["microsoft edge"] },
+    KnownWorkload { key: "arc", name: "Arc", category: GroupCategory::Browser, name_needles: &[], path_needles: &["/arc.app/"] },
+    KnownWorkload { key: "safari", name: "Safari & WebKit", category: GroupCategory::Browser, name_needles: &["safari", "com.apple.webkit"], path_needles: &["/safari.app/"] },
+    KnownWorkload { key: "antigravity", name: "Antigravity IDE", category: GroupCategory::Ide, name_needles: &["antigravity"], path_needles: &["antigravity"] },
+    KnownWorkload { key: "cursor", name: "Cursor", category: GroupCategory::Ide, name_needles: &[], path_needles: &["/cursor.app/", "\\cursor\\"] },
+    KnownWorkload { key: "zed", name: "Zed", category: GroupCategory::Ide, name_needles: &[], path_needles: &["/zed.app/"] },
+    KnownWorkload { key: "xcode", name: "Xcode", category: GroupCategory::Ide, name_needles: &["xcode"], path_needles: &["/xcode.app/"] },
+    KnownWorkload { key: "jetbrains", name: "JetBrains IDE", category: GroupCategory::Ide, name_needles: &["idea", "pycharm", "webstorm", "goland", "rustrover", "clion"], path_needles: &["jetbrains"] },
+    KnownWorkload { key: "vscode", name: "VS Code IDE", category: GroupCategory::Ide, name_needles: &["code"], path_needles: &["vscode", "visual studio code"] },
+    KnownWorkload { key: "gopls", name: "Go Language Server (gopls)", category: GroupCategory::LanguageServer, name_needles: &["gopls"], path_needles: &["gopls"] },
+    KnownWorkload { key: "rust_analyzer", name: "Rust Analyzer", category: GroupCategory::LanguageServer, name_needles: &["rust-analyzer"], path_needles: &["rust-analyzer"] },
+    KnownWorkload { key: "tsserver", name: "TypeScript Language Server", category: GroupCategory::LanguageServer, name_needles: &["tsserver", "typescript-language-server"], path_needles: &["tsserver"] },
+    KnownWorkload { key: "pyright", name: "Pyright", category: GroupCategory::LanguageServer, name_needles: &["pyright"], path_needles: &["pyright"] },
+    KnownWorkload { key: "clangd", name: "clangd", category: GroupCategory::LanguageServer, name_needles: &["clangd"], path_needles: &[] },
+    KnownWorkload { key: "sourcekit", name: "SourceKit LSP", category: GroupCategory::LanguageServer, name_needles: &["sourcekit"], path_needles: &[] },
+    KnownWorkload { key: "docker", name: "Docker Container Runtime", category: GroupCategory::ContainerRuntime, name_needles: &["docker", "containerd", "com.docker"], path_needles: &["docker"] },
+    KnownWorkload { key: "orbstack", name: "OrbStack", category: GroupCategory::ContainerRuntime, name_needles: &["orbstack"], path_needles: &["orbstack"] },
+    KnownWorkload { key: "ollama", name: "Ollama Local LLM", category: GroupCategory::LocalLlm, name_needles: &["ollama"], path_needles: &["ollama"] },
+    KnownWorkload { key: "lmstudio", name: "LM Studio", category: GroupCategory::LocalLlm, name_needles: &["lm studio", "lmstudio"], path_needles: &["lm studio"] },
+    KnownWorkload { key: "llamacpp", name: "llama.cpp", category: GroupCategory::LocalLlm, name_needles: &["llama-server", "llama-cli"], path_needles: &[] },
+    KnownWorkload { key: "postgres", name: "PostgreSQL", category: GroupCategory::Database, name_needles: &["postgres"], path_needles: &[] },
+    KnownWorkload { key: "mysql", name: "MySQL", category: GroupCategory::Database, name_needles: &["mysqld"], path_needles: &[] },
+    KnownWorkload { key: "redis", name: "Redis", category: GroupCategory::Database, name_needles: &["redis-server"], path_needles: &[] },
+    KnownWorkload { key: "mongodb", name: "MongoDB", category: GroupCategory::Database, name_needles: &["mongod"], path_needles: &[] },
+    KnownWorkload { key: "rust_build", name: "Rust Builds (cargo/rustc)", category: GroupCategory::BuildSystem, name_needles: &["cargo", "rustc"], path_needles: &[] },
+    KnownWorkload { key: "clang", name: "C/C++ Compilers", category: GroupCategory::BuildSystem, name_needles: &["clang", "cc1plus", "cl.exe"], path_needles: &[] },
+    KnownWorkload { key: "swift_build", name: "Swift Compiler", category: GroupCategory::BuildSystem, name_needles: &["swift-frontend", "swift-build"], path_needles: &[] },
+    KnownWorkload { key: "gradle", name: "Gradle", category: GroupCategory::BuildSystem, name_needles: &["gradle"], path_needles: &["gradle"] },
+];
+
 pub struct GroupingEngine;
+
+impl Default for GroupingEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl GroupingEngine {
     pub fn new() -> Self {
@@ -9,18 +60,16 @@ impl GroupingEngine {
     }
 
     /// Group raw process snapshots into logical workload groups based on executable signatures,
-    /// parent-child relationships, and command-line arguments.
+    /// app bundle membership, and well-known process names.
     pub fn classify(&self, processes: &HashMap<Pid, ProcessSnapshot>) -> Vec<WorkloadGroup> {
         let mut groups: HashMap<String, WorkloadGroup> = HashMap::new();
 
         for (pid, proc_snap) in processes {
-            let name = &proc_snap.info.name;
-            let group_key = self.derive_group_key(proc_snap);
-            let category = self.derive_category(&group_key, name);
+            let (key, name, category) = self.identify(proc_snap);
 
-            let entry = groups.entry(group_key.clone()).or_insert_with(|| WorkloadGroup {
-                id: group_key.clone(),
-                name: self.format_group_name(&group_key, name),
+            let entry = groups.entry(key.clone()).or_insert_with(|| WorkloadGroup {
+                id: key,
+                name,
                 category,
                 root_pid: *pid,
                 member_pids: Vec::new(),
@@ -28,6 +77,8 @@ impl GroupingEngine {
             });
 
             entry.member_pids.push(*pid);
+            // The lowest PID is usually the parent process of the group.
+            entry.root_pid = entry.root_pid.min(*pid);
 
             // Aggregate metrics across member processes
             let m = &proc_snap.metrics;
@@ -45,11 +96,12 @@ impl GroupingEngine {
 
         let mut result: Vec<WorkloadGroup> = groups.into_values().collect();
         // Sort by physical memory footprint descending
-        result.sort_by(|a, b| b.aggregated_metrics.phys_footprint.cmp(&a.aggregated_metrics.phys_footprint));
+        result.sort_by_key(|w| std::cmp::Reverse(w.aggregated_metrics.phys_footprint));
         result
     }
 
-    fn derive_group_key(&self, proc_snap: &ProcessSnapshot) -> String {
+    /// Returns the (group key, display name, category) for one process.
+    fn identify(&self, proc_snap: &ProcessSnapshot) -> (String, String, GroupCategory) {
         let name_lower = proc_snap.info.name.to_lowercase();
         let path_lower = proc_snap
             .info
@@ -58,64 +110,100 @@ impl GroupingEngine {
             .map(|p| p.to_string_lossy().to_lowercase())
             .unwrap_or_default();
 
-        if name_lower.contains("brave") || path_lower.contains("brave") {
-            "brave".to_string()
-        } else if name_lower.contains("chrome") || path_lower.contains("chrome") {
-            "chrome".to_string()
-        } else if name_lower.contains("firefox") || path_lower.contains("firefox") {
-            "firefox".to_string()
-        } else if name_lower.contains("antigravity") || path_lower.contains("antigravity") {
-            "antigravity".to_string()
-        } else if name_lower.contains("code") || path_lower.contains("vscode") {
-            "vscode".to_string()
-        } else if name_lower.contains("gopls") || path_lower.contains("gopls") {
-            "gopls".to_string()
-        } else if name_lower.contains("rust-analyzer") || path_lower.contains("rust-analyzer") {
-            "rust_analyzer".to_string()
-        } else if name_lower.contains("tsserver") || path_lower.contains("tsserver") {
-            "tsserver".to_string()
-        } else if name_lower.contains("docker") || path_lower.contains("docker") || name_lower.contains("containerd") {
-            "docker".to_string()
-        } else if name_lower.contains("ollama") || path_lower.contains("ollama") {
-            "ollama".to_string()
-        } else if path_lower.starts_with("/system")
+        for known in KNOWN {
+            let by_name = known.name_needles.iter().any(|n| name_lower.contains(n));
+            let by_path = known.path_needles.iter().any(|n| path_lower.contains(n));
+            if by_name || by_path {
+                return (known.key.to_string(), known.name.to_string(), known.category.clone());
+            }
+        }
+
+        let is_system_path = path_lower.starts_with("/system/library")
             || path_lower.starts_with("/usr/libexec")
             || path_lower.starts_with("/usr/sbin")
-            || path_lower.starts_with("c:\\windows\\")
-        {
-            "system_daemons".to_string()
-        } else {
-            proc_snap.info.name.trim().to_string()
+            || path_lower.starts_with("/usr/bin")
+            || path_lower.starts_with("/sbin")
+            || path_lower.starts_with("/library/apple")
+            || path_lower.starts_with("c:\\windows\\");
+
+        // Helpers live inside their app's bundle, so group by the outermost `.app`.
+        if !is_system_path {
+            if let Some(app) = proc_snap.info.executable_path.as_deref().and_then(outermost_app_bundle) {
+                return (format!("app:{}", app.to_lowercase()), app, GroupCategory::UserApplication);
+            }
         }
+
+        if is_system_path {
+            let name = if cfg!(windows) { "Windows System Processes" } else { "macOS System Daemons" };
+            return ("system_daemons".to_string(), name.to_string(), GroupCategory::SystemDaemon);
+        }
+
+        let raw = proc_snap.info.name.trim().to_string();
+        (raw.clone(), raw, GroupCategory::UserApplication)
+    }
+}
+
+/// `/Applications/WhatsApp.app/Contents/Frameworks/Helper.app/...` → `WhatsApp`.
+fn outermost_app_bundle(path: &std::path::Path) -> Option<String> {
+    path.components().find_map(|c| {
+        let s = c.as_os_str().to_string_lossy();
+        s.strip_suffix(".app").filter(|n| !n.is_empty()).map(str::to_string)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{ProcessInfo, ProcessSnapshot};
+    use std::path::PathBuf;
+
+    fn proc(pid: Pid, name: &str, path: &str, footprint: u64) -> (Pid, ProcessSnapshot) {
+        let info = ProcessInfo {
+            pid,
+            ppid: 1,
+            name: name.to_string(),
+            executable_path: Some(PathBuf::from(path)),
+            command_line: Vec::new(),
+            working_directory: None,
+            user_id: 501,
+            start_time: None,
+        };
+        let metrics = ProcessMetrics { phys_footprint: footprint, ..Default::default() };
+        (pid, ProcessSnapshot { info, metrics })
     }
 
-    fn format_group_name(&self, key: &str, raw_name: &str) -> String {
-        match key {
-            "brave" => "Brave Browser".to_string(),
-            "chrome" => "Google Chrome".to_string(),
-            "firefox" => "Mozilla Firefox".to_string(),
-            "antigravity" => "Antigravity IDE".to_string(),
-            "vscode" => "VS Code IDE".to_string(),
-            "gopls" => "Go Language Server (gopls)".to_string(),
-            "rust_analyzer" => "Rust Analyzer".to_string(),
-            "tsserver" => "TypeScript Language Server".to_string(),
-            "docker" => "Docker Container Runtime".to_string(),
-            "ollama" => "Ollama Local LLM".to_string(),
-            "system_daemons" if cfg!(windows) => "Windows System Processes".to_string(),
-            "system_daemons" => "macOS System Daemons".to_string(),
-            _ => raw_name.trim().to_string(),
-        }
+    #[test]
+    fn helpers_join_their_app_bundle() {
+        let processes = HashMap::from([
+            proc(10, "WhatsApp", "/Applications/WhatsApp.app/Contents/MacOS/WhatsApp", 100),
+            proc(11, "WhatsApp Helper", "/Applications/WhatsApp.app/Contents/Frameworks/WhatsApp Helper.app/Contents/MacOS/WhatsApp Helper", 50),
+        ]);
+        let groups = GroupingEngine::new().classify(&processes);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].name, "WhatsApp");
+        assert_eq!(groups[0].member_pids.len(), 2);
+        assert_eq!(groups[0].aggregated_metrics.phys_footprint, 150);
+        assert_eq!(groups[0].root_pid, 10);
     }
 
-    fn derive_category(&self, key: &str, _raw_name: &str) -> GroupCategory {
-        match key {
-            "brave" | "chrome" | "firefox" => GroupCategory::Browser,
-            "antigravity" | "vscode" => GroupCategory::Ide,
-            "gopls" | "rust_analyzer" | "tsserver" => GroupCategory::LanguageServer,
-            "docker" => GroupCategory::ContainerRuntime,
-            "ollama" => GroupCategory::LocalLlm,
-            "system_daemons" => GroupCategory::SystemDaemon,
-            _ => GroupCategory::UserApplication,
-        }
+    #[test]
+    fn known_apps_win_over_bundle_names_and_sort_by_footprint() {
+        let processes = HashMap::from([
+            proc(20, "Xcode", "/Applications/Xcode.app/Contents/MacOS/Xcode", 10),
+            proc(21, "Brave Browser Helper (Renderer)", "/Applications/Brave Browser.app/Contents/Frameworks/x", 500),
+            proc(22, "launchd", "/sbin/launchd", 5),
+        ]);
+        let groups = GroupingEngine::new().classify(&processes);
+        let names: Vec<&str> = groups.iter().map(|g| g.name.as_str()).collect();
+        assert_eq!(names[0], "Brave Browser");
+        assert!(names.contains(&"Xcode"), "Xcode must not be matched as VS Code: {names:?}");
+        assert!(groups.iter().any(|g| g.category == GroupCategory::SystemDaemon));
+    }
+
+    #[test]
+    fn outermost_bundle_is_used() {
+        let p = std::path::Path::new("/Applications/Foo.app/Contents/Frameworks/Bar.app/Contents/MacOS/Bar");
+        assert_eq!(outermost_app_bundle(p).as_deref(), Some("Foo"));
+        assert_eq!(outermost_app_bundle(std::path::Path::new("/usr/local/bin/node")), None);
     }
 }
