@@ -32,7 +32,7 @@ impl ReportExporter {
         recent_delta: Option<ResourceDelta>,
     ) -> DiagnosticReport {
         let now = chrono::Local::now().to_rfc3339();
-        let report_id = format!("incident-{}", chrono::Local::now().format("%Y%m%m-%H%M%S"));
+        let report_id = format!("incident-{}", chrono::Local::now().format("%Y%m%d-%H%M%S"));
 
         let workloads_summary = snapshot
             .workloads

@@ -78,7 +78,11 @@ impl GroupingEngine {
             "docker".to_string()
         } else if name_lower.contains("ollama") || path_lower.contains("ollama") {
             "ollama".to_string()
-        } else if path_lower.starts_with("/system") || path_lower.starts_with("/usr/libexec") || path_lower.starts_with("/usr/sbin") {
+        } else if path_lower.starts_with("/system")
+            || path_lower.starts_with("/usr/libexec")
+            || path_lower.starts_with("/usr/sbin")
+            || path_lower.starts_with("c:\\windows\\")
+        {
             "system_daemons".to_string()
         } else {
             proc_snap.info.name.trim().to_string()
@@ -97,6 +101,7 @@ impl GroupingEngine {
             "tsserver" => "TypeScript Language Server".to_string(),
             "docker" => "Docker Container Runtime".to_string(),
             "ollama" => "Ollama Local LLM".to_string(),
+            "system_daemons" if cfg!(windows) => "Windows System Processes".to_string(),
             "system_daemons" => "macOS System Daemons".to_string(),
             _ => raw_name.trim().to_string(),
         }

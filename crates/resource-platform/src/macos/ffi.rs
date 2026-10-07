@@ -2,7 +2,7 @@ use std::ffi::c_void;
 use libc::{c_int, pid_t};
 
 pub const PROC_ALL_PIDS: u32 = 1;
-pub const PROC_PIDTBSDINFO: c_int = 1;
+pub const PROC_PIDTBSDINFO: c_int = 3;
 pub const PROC_PIDTASKINFO: c_int = 4;
 pub const PROC_PIDTASKALLINFO: c_int = 2;
 pub const RUSAGE_INFO_V4: c_int = 4;
@@ -91,8 +91,11 @@ pub struct proc_bsdinfo {
     pub pbi_nfiles: u32,
     pub pbi_pgid: u32,
     pub pbi_pjobc: u32,
-    pub pbi_euid: u32,
-    pub pbi_egid: u32,
+    pub e_tdev: u32,
+    pub e_tpgid: u32,
+    pub pbi_nice: i32,
+    pub pbi_start_tvsec: u64,
+    pub pbi_start_tvusec: u64,
 }
 
 #[repr(C)]

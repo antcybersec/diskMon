@@ -9,3 +9,5 @@ resource-core = { path = "../resource-core" }
 resource-platform = { path = "../resource-platform" }
 tokio = { version = "1.0", features = ["full"] }
 serde_json = "1.0"
+eframe = "0.36"
+dirs = "5.0"
