@@ -146,6 +146,9 @@ impl GroupingEngine {
     }
 }
 
+/// Most distributions give regular users UIDs from 1000 up; lower UIDs are system accounts.
+const LINUX_FIRST_USER_UID: u32 = 1000;
+
 /// OS-owned processes: system paths, and on Linux root daemons and kernel threads,
 /// whose executable path a normal user often can't read.
 fn is_system_process(proc_snap: &ProcessSnapshot, path_lower: &str) -> bool {
@@ -165,10 +168,11 @@ fn is_system_process(proc_snap: &ProcessSnapshot, path_lower: &str) -> bool {
         return true;
     }
 
-    // Linux kernel threads are children of kthreadd (PID 2); root daemons often hide their path.
+    // Linux kernel threads are children of kthreadd (PID 2). Daemons running as root or a
+    // system account (UID below 1000, e.g. systemd-resolve, messagebus) hide their path.
     cfg!(target_os = "linux")
         && proc_snap.info.executable_path.is_none()
-        && (proc_snap.info.pid == 2 || proc_snap.info.ppid == 2 || proc_snap.info.user_id == 0)
+        && (proc_snap.info.pid == 2 || proc_snap.info.ppid == 2 || proc_snap.info.user_id < LINUX_FIRST_USER_UID)
 }
 
 /// `/snap/spotify/123/usr/bin/spotify` → `spotify`; `/opt/zoom/zoom` → `zoom`.
@@ -250,15 +254,19 @@ mod tests {
         let mut daemon = proc(301, "systemd-journald", "/", 40);
         daemon.1.info.executable_path = None;
         daemon.1.info.user_id = 0;
+        let mut resolver = proc(304, "systemd-resolve", "/", 12);
+        resolver.1.info.executable_path = None;
+        resolver.1.info.user_id = 101;
         let processes = HashMap::from([
             kworker,
             daemon,
+            resolver,
             proc(302, "spotify", "/snap/spotify/80/usr/share/spotify/spotify", 300),
             proc(303, "htop", "/usr/bin/htop", 5),
         ]);
         let groups = GroupingEngine::new().classify(&processes);
         let find = |name: &str| groups.iter().find(|g| g.name == name);
-        assert_eq!(find("Linux System Services").map(|g| g.member_pids.len()), Some(2));
+        assert_eq!(find("Linux System Services").map(|g| g.member_pids.len()), Some(3));
         assert!(find("spotify").is_some());
         assert_eq!(find("htop").map(|g| g.category.clone()), Some(GroupCategory::UserApplication));
     }
