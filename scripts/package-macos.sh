@@ -20,6 +20,18 @@ lipo -create \
   target/x86_64-apple-darwin/release/resource-ui \
   -output "$APP/Contents/MacOS/diskMon"
 
+# App icon: build an .icns from the shared 512px PNG.
+ICONSET="$(mktemp -d)/diskMon.iconset"
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+  sips -z $size $size packaging/diskmon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+  double=$((size * 2))
+  if [ $double -le 512 ]; then
+    sips -z $double $double packaging/diskmon.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+  fi
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/diskMon.icns"
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -29,6 +41,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>diskMon</string>
   <key>CFBundleIdentifier</key><string>com.antcybersec.diskmon</string>
   <key>CFBundleExecutable</key><string>diskMon</string>
+  <key>CFBundleIconFile</key><string>diskMon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleVersion</key><string>${VERSION}</string>

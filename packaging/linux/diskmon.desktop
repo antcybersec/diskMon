@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=diskMon
+Comment=See what is using your memory
+Exec=diskmon
+Icon=diskmon
+Categories=System;Monitor;
+Terminal=false

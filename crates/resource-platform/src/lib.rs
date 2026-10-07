@@ -3,13 +3,13 @@ pub mod traits;
 #[cfg(target_os = "macos")]
 pub mod macos;
 
-#[cfg(target_os = "windows")]
-pub mod windows;
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+pub mod portable;
 
 pub use traits::*;
 
 #[cfg(target_os = "macos")]
 pub use macos::MacOsCollector as NativeCollector;
 
-#[cfg(target_os = "windows")]
-pub use windows::WindowsCollector as NativeCollector;
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+pub use portable::SysinfoCollector as NativeCollector;

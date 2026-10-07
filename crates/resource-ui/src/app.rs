@@ -694,13 +694,21 @@ fn sparkline(ui: &mut egui::Ui, series: &VecDeque<u64>, color: Color32) {
 }
 
 fn reveal_label() -> &'static str {
-    if cfg!(windows) { "Show in Explorer" } else { "Reveal in Finder" }
+    if cfg!(windows) {
+        "Show in Explorer"
+    } else if cfg!(target_os = "linux") {
+        "Open containing folder"
+    } else {
+        "Reveal in Finder"
+    }
 }
 
-/// Opens the system file browser with the executable selected. Read-only.
+/// Opens the system file browser at the executable (selected where the OS supports it). Read-only.
 fn reveal(path: &Path) {
     let result = if cfg!(windows) {
         std::process::Command::new("explorer").arg(format!("/select,{}", path.display())).spawn()
+    } else if cfg!(target_os = "linux") {
+        std::process::Command::new("xdg-open").arg(path.parent().unwrap_or(path)).spawn()
     } else {
         std::process::Command::new("open").arg("-R").arg(path).spawn()
     };

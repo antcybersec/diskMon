@@ -118,28 +118,69 @@ impl GroupingEngine {
             }
         }
 
-        let is_system_path = path_lower.starts_with("/system/library")
-            || path_lower.starts_with("/usr/libexec")
-            || path_lower.starts_with("/usr/sbin")
-            || path_lower.starts_with("/usr/bin")
-            || path_lower.starts_with("/sbin")
-            || path_lower.starts_with("/library/apple")
-            || path_lower.starts_with("c:\\windows\\");
+        let is_system = is_system_process(proc_snap, &path_lower);
 
-        // Helpers live inside their app's bundle, so group by the outermost `.app`.
-        if !is_system_path {
-            if let Some(app) = proc_snap.info.executable_path.as_deref().and_then(outermost_app_bundle) {
-                return (format!("app:{}", app.to_lowercase()), app, GroupCategory::UserApplication);
+        // Helpers live inside their app's bundle, so group by the outermost `.app`,
+        // or by the Snap / `/opt` package directory on Linux.
+        if !is_system {
+            if let Some(path) = proc_snap.info.executable_path.as_deref() {
+                if let Some(app) = outermost_app_bundle(path).or_else(|| linux_package_dir(path)) {
+                    return (format!("app:{}", app.to_lowercase()), app, GroupCategory::UserApplication);
+                }
             }
         }
 
-        if is_system_path {
-            let name = if cfg!(windows) { "Windows System Processes" } else { "macOS System Daemons" };
+        if is_system {
+            let name = if cfg!(windows) {
+                "Windows System Processes"
+            } else if cfg!(target_os = "linux") {
+                "Linux System Services"
+            } else {
+                "macOS System Daemons"
+            };
             return ("system_daemons".to_string(), name.to_string(), GroupCategory::SystemDaemon);
         }
 
         let raw = proc_snap.info.name.trim().to_string();
         (raw.clone(), raw, GroupCategory::UserApplication)
+    }
+}
+
+/// OS-owned processes: system paths, and on Linux root daemons and kernel threads,
+/// whose executable path a normal user often can't read.
+fn is_system_process(proc_snap: &ProcessSnapshot, path_lower: &str) -> bool {
+    const MACOS: &[&str] = &["/system/library", "/usr/libexec", "/usr/sbin", "/usr/bin", "/sbin", "/library/apple"];
+    // On Linux, /usr/bin is where ordinary apps live, so it doesn't count as "system".
+    const LINUX: &[&str] = &["/usr/lib/systemd", "/lib/systemd", "/usr/libexec", "/usr/sbin", "/sbin", "/usr/lib/polkit"];
+    const WINDOWS: &[&str] = &["c:\\windows\\"];
+
+    let prefixes = if cfg!(windows) {
+        WINDOWS
+    } else if cfg!(target_os = "linux") {
+        LINUX
+    } else {
+        MACOS
+    };
+    if prefixes.iter().any(|p| path_lower.starts_with(p)) {
+        return true;
+    }
+
+    // Linux kernel threads are children of kthreadd (PID 2); root daemons often hide their path.
+    cfg!(target_os = "linux")
+        && proc_snap.info.executable_path.is_none()
+        && (proc_snap.info.pid == 2 || proc_snap.info.ppid == 2 || proc_snap.info.user_id == 0)
+}
+
+/// `/snap/spotify/123/usr/bin/spotify` → `spotify`; `/opt/zoom/zoom` → `zoom`.
+fn linux_package_dir(path: &std::path::Path) -> Option<String> {
+    if !cfg!(target_os = "linux") {
+        return None;
+    }
+    let mut parts = path.components().map(|c| c.as_os_str().to_string_lossy().into_owned());
+    parts.next(); // root
+    match parts.next()?.as_str() {
+        "snap" | "opt" => parts.next().filter(|n| !n.is_empty()),
+        _ => None,
     }
 }
 
@@ -198,6 +239,28 @@ mod tests {
         assert_eq!(names[0], "Brave Browser");
         assert!(names.contains(&"Xcode"), "Xcode must not be matched as VS Code: {names:?}");
         assert!(groups.iter().any(|g| g.category == GroupCategory::SystemDaemon));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_kernel_threads_root_daemons_and_snaps() {
+        let mut kworker = proc(300, "kworker/0:1", "/", 0);
+        kworker.1.info.executable_path = None;
+        kworker.1.info.ppid = 2;
+        let mut daemon = proc(301, "systemd-journald", "/", 40);
+        daemon.1.info.executable_path = None;
+        daemon.1.info.user_id = 0;
+        let processes = HashMap::from([
+            kworker,
+            daemon,
+            proc(302, "spotify", "/snap/spotify/80/usr/share/spotify/spotify", 300),
+            proc(303, "htop", "/usr/bin/htop", 5),
+        ]);
+        let groups = GroupingEngine::new().classify(&processes);
+        let find = |name: &str| groups.iter().find(|g| g.name == name);
+        assert_eq!(find("Linux System Services").map(|g| g.member_pids.len()), Some(2));
+        assert!(find("spotify").is_some());
+        assert_eq!(find("htop").map(|g| g.category.clone()), Some(GroupCategory::UserApplication));
     }
 
     #[test]

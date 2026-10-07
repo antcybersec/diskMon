@@ -1,5 +1,6 @@
 [package]
 name = "resource-ui"
+description = "diskMon: see what is using your computer's memory"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,3 +12,20 @@ tokio = { version = "1.0", features = ["full"] }
 serde_json = "1.0"
 eframe = "0.36"
 dirs = "5.0"
+
+# OpenGL works on far more Linux machines (VMs, older GPUs) than Vulkan, which wgpu needs.
+[target.'cfg(target_os = "linux")'.dependencies]
+eframe = { version = "0.36", features = ["glow"] }
+
+[package.metadata.deb]
+name = "diskmon"
+maintainer = "antcybersec <170962632+antcybersec@users.noreply.github.com>"
+copyright = "diskMon contributors"
+section = "utils"
+extended-description = "Groups running processes into apps, maps their memory, CPU and disk I/O in a live treemap, and flags apps putting your RAM under pressure. Read-only."
+depends = "$auto"
+assets = [
+    ["target/release/resource-ui", "usr/bin/diskmon", "755"],
+    ["../../packaging/linux/diskmon.desktop", "usr/share/applications/", "644"],
+    ["../../packaging/diskmon.png", "usr/share/icons/hicolor/512x512/apps/", "644"],
+]

@@ -13,5 +13,5 @@ async-trait = "0.1"
 [target.'cfg(target_os = "macos")'.dependencies]
 mach2 = "0.4"
 
-[target.'cfg(target_os = "windows")'.dependencies]
+[target.'cfg(any(target_os = "windows", target_os = "linux"))'.dependencies]
 sysinfo = "0.39"

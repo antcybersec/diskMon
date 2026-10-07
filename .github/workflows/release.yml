@@ -56,9 +56,57 @@ jobs:
           path: dist/diskMon-windows-x64.exe
           if-no-files-found: error
 
+  build-linux:
+    name: Build Linux app (.AppImage, .deb)
+    # Oldest supported runner, so the binaries also run on older distros (glibc 2.35).
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev \
+            libxrandr-dev libxi-dev libgl1-mesa-dev libxcb-render0-dev libxcb-shape0-dev \
+            libxcb-xfixes0-dev xvfb libgl1-mesa-dri
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-deb
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Smoke test the CLI on Linux
+        run: cargo run --release -p resource-cli
+
+      - name: Build packages
+        run: scripts/package-linux.sh
+
+      - name: Launch the app under a virtual display
+        run: |
+          set +e
+          timeout 15 xvfb-run -a target/release/resource-ui
+          status=$?
+          # 124 means it was still running when timeout stopped it, i.e. it started fine.
+          if [ $status -ne 124 ]; then echo "app exited early with status $status"; exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diskMon-linux
+          path: |
+            dist/diskMon-linux-x86_64.AppImage
+            dist/diskMon-linux-amd64.deb
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
-    needs: [build-mac, build-windows]
+    needs: [build-mac, build-windows, build-linux]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -73,4 +121,6 @@ jobs:
           files: |
             dist/diskMon-macos-universal.dmg
             dist/diskMon-windows-x64.exe
+            dist/diskMon-linux-x86_64.AppImage
+            dist/diskMon-linux-amd64.deb
           generate_release_notes: true
