@@ -23,7 +23,8 @@ maintainer = "antcybersec <170962632+antcybersec@users.noreply.github.com>"
 copyright = "diskMon contributors"
 section = "utils"
 extended-description = "Groups running processes into apps, maps their memory, CPU and disk I/O in a live treemap, and flags apps putting your RAM under pressure. Read-only."
-depends = "$auto"
+# winit and glutin load these with dlopen at startup, so dpkg-shlibdeps can't see them.
+depends = "$auto, libxkbcommon0, libxkbcommon-x11-0, libx11-6, libx11-xcb1, libxcursor1, libxrandr2, libxi6, libwayland-client0, libgl1, libegl1"
 assets = [
     ["target/release/resource-ui", "usr/bin/diskmon", "755"],
     ["../../packaging/linux/diskmon.desktop", "usr/share/applications/", "644"],
