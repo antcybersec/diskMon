@@ -78,13 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "diskMon — Visual System Resource Diagnosis & Spatial Memory Treemap" },
-      { name: "description", content: "Open-source visual resource investigation and diagnosis desktop application for macOS and Windows. Visualize memory, CPU, and workload pressure using spatial treemaps." },
-      { name: "author", content: "antcybersec" },
-      { property: "og:title", content: "diskMon — Visual System Resource Diagnosis" },
-      { property: "og:description", content: "Open-source visual resource investigation and diagnosis desktop application for macOS and Windows." },
+      { title: "Lovable App" },
+      { name: "description", content: "Lovable Generated Project" },
+      { name: "author", content: "Lovable" },
+      { property: "og:title", content: "Lovable App" },
+      { property: "og:description", content: "Lovable Generated Project" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
