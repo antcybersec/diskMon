@@ -1,22 +1,48 @@
-# diskMon
+<p align="center">
+  <img src="packaging/diskmon.png" alt="diskMon Logo" width="88" height="88">
+</p>
 
-See where your computer's memory goes. diskMon groups every running process into the app it belongs to, maps them in a live treemap, and flags the ones putting your RAM under pressure.
+<h1 align="center">diskMon</h1>
 
-Free and open source, for macOS, Windows and Linux. Read-only: it never closes, pauses or changes a process.
+<p align="center">
+  <strong>See where your computer's memory goes.</strong><br>
+  Every process grouped into workloads, mapped in a live treemap, with rule-based diagnostic alerts.
+</p>
+
+<p align="center">
+  <a href="https://github.com/antcybersec/diskMon/releases/latest"><img src="https://img.shields.io/github/v/release/antcybersec/diskMon?color=f08a3c&label=release" alt="Latest Release"></a>
+  <a href="https://diskmon.vercel.app"><img src="https://img.shields.io/badge/web_simulator-diskmon.vercel.app-f2ae3d" alt="Web Simulator"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
+  <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="Platforms">
+  <img src="https://img.shields.io/badge/built_with-Rust-orange" alt="Built with Rust">
+</p>
+
+<p align="center">
+  <a href="#download">Downloads</a> •
+  <a href="#walkthrough">Walkthrough</a> •
+  <a href="https://diskmon.vercel.app">Interactive Simulator</a> •
+  <a href="#what-it-does">Features</a> •
+  <a href="#keyboard-shortcuts">Shortcuts</a> •
+  <a href="#build-from-source">Build</a>
+</p>
+
+---
 
 ## Walkthrough
 
-https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4
-
 <p align="center">
-  <video src="https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4" width="100%" controls poster="https://github.com/antcybersec/diskMon/raw/main/packaging/diskmon-demo.jpg">
-    <a href="https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4">
-      <img src="https://github.com/antcybersec/diskMon/raw/main/packaging/diskmon-demo.jpg" alt="diskMon Walkthrough Preview" width="100%">
-    </a>
-  </video>
+  <a href="https://diskmon.vercel.app">
+    <img src="packaging/diskmon-demo.webp" alt="diskMon Live Walkthrough Demo" width="100%">
+  </a>
 </p>
 
-> **[▶ Watch the Full 4K Walkthrough Video](https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4)** — see live workload grouping, memory treemap navigation, process tree drill-down, and diagnostic alerts in action.
+<p align="center">
+  <em>Live process tree drill-down, memory treemap navigation, and memory leak diagnostics.</em><br>
+  <strong><a href="diskkmon.mp4">▶ Watch Full 4K Video (60 fps)</a></strong> &nbsp;•&nbsp; 
+  <strong><a href="https://diskmon.vercel.app">🌐 Try the Live Interactive Simulator</a></strong>
+</p>
+
+---
 
 ## Download
 
