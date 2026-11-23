@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Canvas Gradient -->
+    <radialGradient id="bgGlowD" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#1c1d22" />
+      <stop offset="60%" stop-color="#111114" />
+      <stop offset="100%" stop-color="#08080a" />
+    </radialGradient>
+
+    <!-- Metallic Edge Stroke -->
+    <linearGradient id="edgeGradD" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02" />
+    </linearGradient>
+
+    <!-- Pillar 1 Gradient (Titanium Space) -->
+    <linearGradient id="pillarLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#383842" />
+      <stop offset="100%" stop-color="#202026" />
+    </linearGradient>
+
+    <!-- Amber Glow & Gradient for the 'D' Loop -->
+    <linearGradient id="amberLoop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5ba50" />
+      <stop offset="50%" stop-color="#f08a3c" />
+      <stop offset="100%" stop-color="#d9541e" />
+    </linearGradient>
+
+    <radialGradient id="loopAura" cx="65%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#f08a3c" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#f08a3c" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- iOS / macOS Squircle Base -->
+  <rect x="16" y="16" width="480" height="480" rx="112" ry="112" fill="url(#bgGlowD)" stroke="url(#edgeGradD)" stroke-width="2" />
+
+  <!-- Ambient light -->
+  <circle cx="310" cy="256" r="160" fill="url(#loopAura)" />
+
+  <!-- ONE SINGLE CENTRAL OBJECT: The Minimalist 'D' Treemap Mark -->
+  <g transform="translate(136, 126)">
+    <!-- Left Vertical Spine (System Baseline) -->
+    <rect x="0" y="0" width="68" height="260" rx="34" ry="34" fill="url(#pillarLeft)" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5" />
+
+    <!-- Right Bold 'D' Arc (Storage Allocation Volume) -->
+    <path d="M 92 0 L 150 0 C 220 0 260 55 260 130 C 260 205 220 260 150 260 L 92 260 C 76 260 64 248 64 232 L 64 28 C 64 12 76 0 92 0 Z 
+             M 128 58 L 128 202 L 146 202 C 185 202 208 172 208 130 C 208 88 185 58 146 58 Z" 
+          fill="url(#amberLoop)" fill-rule="evenodd" />
+  </g>
+</svg>
