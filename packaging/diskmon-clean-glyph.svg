@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- macOS Dock drop shadow -->
+    <filter id="dock-shadow" x="-15%" y="-15%" width="130%" height="135%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#000000" flood-opacity="0.55"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+
+    <linearGradient id="bg" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#21201d"/>
+      <stop offset="60%" stop-color="#141312"/>
+      <stop offset="100%" stop-color="#0b0a09"/>
+    </linearGradient>
+
+    <linearGradient id="rim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.01"/>
+    </linearGradient>
+
+    <!-- Amber Glow -->
+    <linearGradient id="amber-core" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffbb55"/>
+      <stop offset="65%" stop-color="#f08a3c"/>
+      <stop offset="100%" stop-color="#cc5a10"/>
+    </linearGradient>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#f08a3c" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <clipPath id="squircle">
+      <rect x="36" y="36" width="440" height="440" rx="98" ry="98"/>
+    </clipPath>
+  </defs>
+
+  <rect x="36" y="36" width="440" height="440" rx="98" ry="98" fill="url(#bg)" filter="url(#dock-shadow)"/>
+  <rect x="37" y="37" width="438" height="438" rx="97" ry="97" fill="none" stroke="url(#rim)" stroke-width="2"/>
+
+  <g clip-path="url(#squircle)">
+    <!-- Top Diffuse Overhead Spotlight -->
+    <radialGradient id="spot" cx="50%" cy="20%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <rect x="36" y="36" width="440" height="440" fill="url(#spot)"/>
+
+    <!-- ==================== THE SINGLE MONOLITHIC GLYPH ==================== -->
+    <g transform="translate(136, 136)" filter="url(#glow)">
+      <!-- Single precision diagnostic glyph: geometric architectural 'dM' treemap wedge -->
+      <path d="M 0 36 C 0 16 16 0 36 0 L 120 0 C 131 0 140 9 140 20 L 140 100 C 140 111 149 120 160 120 L 220 120 C 231 120 240 129 240 140 L 240 204 C 240 224 224 240 204 240 L 36 240 C 16 240 0 224 0 204 Z" 
+            fill="url(#amber-core)" 
+            stroke="#ffd999" 
+            stroke-width="2"/>
+      
+      <!-- Specular Bevel Cut -->
+      <path d="M 0 36 C 0 16 16 0 36 0 L 120 0 C 131 0 140 9 140 20 L 140 50 C 90 45 40 70 0 110 Z" 
+            fill="#ffffff" 
+            opacity="0.25"/>
+
+      <!-- Inner architectural void / breathing space -->
+      <rect x="36" y="70" width="68" height="100" rx="14" fill="#181715" stroke="#33302a" stroke-width="1.5"/>
+    </g>
+    <!-- ====================================================================== -->
+  </g>
+</svg>

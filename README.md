@@ -32,7 +32,7 @@
 
 <p align="center">
   <a href="https://diskmon.vercel.app">
-    <img src="packaging/diskmon-demo.webp" alt="diskMon Live Walkthrough Demo" width="100%">
+    <img src="packaging/diskmon-demo.gif" alt="diskMon Live Walkthrough Demo" width="100%">
   </a>
 </p>
 
