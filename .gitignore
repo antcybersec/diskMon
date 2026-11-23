@@ -4,3 +4,9 @@
 .DS_Store
 *.swp
 /dist
+mosaic-disk-magic/
+.omc/
+*.code-workspace
+frame_*.png
+diskkmonn.mp4
+diskmon_demo_with_context.mp4

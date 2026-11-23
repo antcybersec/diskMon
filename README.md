@@ -4,6 +4,20 @@ See where your computer's memory goes. diskMon groups every running process into
 
 Free and open source, for macOS, Windows and Linux. Read-only: it never closes, pauses or changes a process.
 
+## Walkthrough
+
+https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4
+
+<p align="center">
+  <video src="https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4" width="100%" controls poster="https://github.com/antcybersec/diskMon/raw/main/packaging/diskmon-demo.jpg">
+    <a href="https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4">
+      <img src="https://github.com/antcybersec/diskMon/raw/main/packaging/diskmon-demo.jpg" alt="diskMon Walkthrough Preview" width="100%">
+    </a>
+  </video>
+</p>
+
+> **[▶ Watch the Full 4K Walkthrough Video](https://github.com/antcybersec/diskMon/raw/main/diskkmon.mp4)** — see live workload grouping, memory treemap navigation, process tree drill-down, and diagnostic alerts in action.
+
 ## Download
 
 | Platform | Download |
